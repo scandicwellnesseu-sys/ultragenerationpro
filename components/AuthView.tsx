@@ -3,31 +3,13 @@ import React, { useState } from 'react';
 import { LogoIcon } from './Icons';
 import { useTranslations } from '../lib/i18n';
 import Spinner from './Spinner';
+import handler from '../functions/generate'; // Import the handler directly
 
 interface AuthViewProps {
   onAuthSuccess: (token: string) => void;
 }
 
 type AuthState = 'login' | 'register' | 'forgotPassword' | 'forgotPasswordConfirmation';
-
-// Mock auth functions for client-side (in production, these would call the backend API)
-const mockAuth = async (action: string, payload: any): Promise<{ token: string; user: any }> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  if (action === 'loginUser') {
-    return {
-      token: 'mock-jwt-token-' + Date.now(),
-      user: { id: 'user_123', name: 'Demo User', email: payload.email },
-    };
-  } else if (action === 'registerUser') {
-    return {
-      token: 'mock-jwt-token-' + Date.now(),
-      user: { id: 'user_' + Date.now(), name: payload.name, email: payload.email },
-    };
-  }
-  throw new Error('Invalid action');
-};
 
 const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
   const [authState, setAuthState] = useState<AuthState>('login');
@@ -47,8 +29,21 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     const payload = authState === 'login' ? { email, password } : { name, email, password };
 
     try {
-        const data = await mockAuth(action, payload);
+        const mockRequest = new Request('http://localhost/functions/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, payload })
+        });
+
+        const response = await handler(mockRequest);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Authentication failed.');
+        }
+        
         onAuthSuccess(data.token);
+
     } catch (e: any) {
         setError(e.message);
     } finally {
@@ -61,8 +56,12 @@ const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
     try {
-        // Simulate sending reset email
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const mockRequest = new Request('http://localhost/functions/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'forgotPassword', payload: { email } })
+        });
+        await handler(mockRequest);
         setAuthState('forgotPasswordConfirmation');
     } catch (e: any) {
         setError(e.message);

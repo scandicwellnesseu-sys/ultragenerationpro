@@ -2,17 +2,18 @@
 import { useState, useCallback } from 'react';
 import { GeneratedDescription, ImageFile, Language, GeneratedInfluencerContent } from '../types';
 import { useAppContext } from '../context/AppContext';
-import handler from '../functions/generate';
 
-// Helper to simulate a fetch call by invoking the serverless handler directly
-async function simulatedFetch(action: string, payload: object) {
-    const mockRequest = new Request('http://localhost/functions/generate', {
+// API endpoint for the serverless function
+const API_URL = '/api/generate';
+
+// Helper to make API calls to the serverless function
+async function apiCall(action: string, payload: object) {
+    const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, payload })
     });
 
-    const response = await handler(mockRequest);
     const data = await response.json();
 
     if (!response.ok) {
@@ -42,7 +43,7 @@ export const useGemini = () => {
 
       try {
         const payload = { imageFile, productTitle, keywords, brandVoice, language, tone, audience };
-        const data = await simulatedFetch('generateDescription', payload);
+        const data = await apiCall('generateDescription', payload);
         
         const parsedJson = data as GeneratedDescription;
         addToHistory({ productTitle, keywords, description: parsedJson, language, tone, audience });
@@ -64,7 +65,7 @@ export const useGemini = () => {
     setLoading(true);
     setError(null);
     try {
-        const data = await simulatedFetch('analyzeBrandVoice', { textToAnalyze });
+        const data = await apiCall('analyzeBrandVoice', { textToAnalyze });
         setLoading(false);
         return data.analyzedVoice;
     } catch (e: any) {
@@ -80,7 +81,7 @@ export const useGemini = () => {
     setLoading(true);
     setError(null);
     try {
-        const data = await simulatedFetch('getSemanticKeywords', { baseKeyword, language });
+        const data = await apiCall('getSemanticKeywords', { baseKeyword, language });
         setLoading(false);
         return data as string[];
     } catch (e: any) {
@@ -97,7 +98,7 @@ export const useGemini = () => {
     setError(null);
     try {
         const payload = { imageFile, postContext, language };
-        const data = await simulatedFetch('generateInfluencerContent', payload);
+        const data = await apiCall('generateInfluencerContent', payload);
         setLoading(false);
         return data as GeneratedInfluencerContent;
     } catch (e: any) {

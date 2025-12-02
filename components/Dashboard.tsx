@@ -1,12 +1,9 @@
 
-import React, { useEffect } from 'react';
-import PriceSuggestion from './PriceSuggestion';
+import React from 'react';
 import { SparklesIcon } from './Icons';
 import { View } from '../App';
 import { useTranslations } from '../lib/i18n';
 import { useAppContext } from '../context/AppContext';
-import { sendEmail } from '../functions/sendEmail';
-import ApprovePriceButton from './ApprovePriceButton';
 
 interface DashboardProps {
     onNavigate: (view: View) => void;
@@ -19,16 +16,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   // Mock data for credits and plan
   const credits = 8;
   const plan = 'Starter';
-
-  useEffect(() => {
-    if (credits < 10) {
-      sendEmail({
-        to: 'demo@user.com',
-        subject: 'Lågt kreditsaldo',
-        text: 'Ditt kreditsaldo är lågt. Logga in och köp fler krediter!'
-      });
-    }
-  }, [credits]);
   
   const recentGenerations = history.slice(0, 5);
 
@@ -71,50 +58,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Produktlista med pris, AI-pris, marginal, trafik/efterfrågan och call to action */}
+      {/* Recent Generations */}
       <div className="mt-8 bg-gray-800/50 border border-gray-700 rounded-xl p-6 shadow-lg">
         <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-white">Produkter</h3>
+            <h3 className="text-xl font-bold text-white">{t.recentGenerations}</h3>
             <button onClick={() => onNavigate('history')} className="text-sm font-medium text-yellow-400 hover:text-yellow-300">{t.viewAll}</button>
         </div>
         {recentGenerations.length > 0 ? (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="py-2 px-2 text-gray-400">Produkt</th>
-                <th className="py-2 px-2 text-gray-400">Nuvarande pris</th>
-                <th className="py-2 px-2 text-gray-400">AI-pris</th>
-                <th className="py-2 px-2 text-gray-400">Marginal (%)</th>
-                <th className="py-2 px-2 text-gray-400">Trafik</th>
-                <th className="py-2 px-2 text-gray-400">Godkänn</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentGenerations.map((gen) => {
-                // Mockvärden för demo
-                const currentPrice = gen.description?.headline ? parseFloat(gen.description.headline.replace(/[^\d.]/g, '')) || 100 : 100;
-                const aiPrice = currentPrice * 1.12;
-                const margin = ((aiPrice - currentPrice) / currentPrice * 100).toFixed(1);
-                const traffic = Math.floor(Math.random() * 1000) + 100;
-                return (
-                  <tr key={gen.id} className="border-b border-gray-700">
-                    <td className="py-2 px-2 text-gray-200">{gen.productTitle}</td>
-                    <td className="py-2 px-2 text-gray-200">{currentPrice} kr</td>
-                    <td className="py-2 px-2 text-green-400 font-bold">{aiPrice.toFixed(2)} kr</td>
-                    <td className="py-2 px-2 text-yellow-300">{margin} %</td>
-                    <td className="py-2 px-2 text-blue-300">{traffic}</td>
-                    <td className="py-2 px-2">
-                      <ApprovePriceButton productId={gen.id} newPrice={aiPrice} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            <ul className="divide-y divide-gray-700">
+            {recentGenerations.map((gen) => (
+                <li key={gen.id} className="py-3 flex justify-between items-center">
+                <div className="flex items-center">
+                    <SparklesIcon className="w-5 h-5 text-yellow-500 mr-3" />
+                    <span className="font-medium text-gray-200 truncate">{gen.productTitle}</span>
+                </div>
+                <span className="text-sm text-gray-500 flex-shrink-0 ml-4">{new Date(gen.timestamp).toLocaleDateString()}</span>
+                </li>
+            ))}
+            </ul>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p>{t.noGenerations}</p>
-          </div>
+            <div className="text-center py-8 text-gray-500">
+                <p>{t.noGenerations}</p>
+            </div>
         )}
       </div>
     </div>

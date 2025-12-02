@@ -1,26 +1,25 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["DOM", "DOM.Iterable", "ES2020"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": false,
-    "noImplicitAny": false,
-    "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "types": ["vite/client"],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["vite/client"]
   },
-  "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["node_modules", "dist", "dist-server", "__tests__", "server"]
+  "include": ["*.ts", "*.tsx", "**/*.ts", "**/*.tsx", "vite-env.d.ts"],
+  "exclude": ["node_modules", "server", "functions", "prisma"]
 }

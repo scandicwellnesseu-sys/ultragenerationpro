@@ -29,7 +29,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const supportedLanguages: SupportedLanguage[] = [
     { code: 'sv', name: 'Svenska', flag: '🇸🇪' },
-    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'no', name: 'Norsk', flag: '🇳🇴' },
+    { code: 'da', name: 'Dansk', flag: '🇩🇰' },
+    { code: 'fi', name: 'Suomi', flag: '🇫🇮' },
+    { code: 'en', name: 'English', flag: '🇬🇧' },
     { code: 'es', name: 'Español', flag: '🇪🇸' },
 ];
 

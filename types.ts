@@ -1,5 +1,5 @@
 
-export type Language = 'en' | 'sv' | 'es';
+export type Language = 'en' | 'sv' | 'es' | 'no' | 'da' | 'fi';
 
 export interface SupportedLanguage {
   code: Language;

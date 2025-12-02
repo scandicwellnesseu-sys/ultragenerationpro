@@ -1,177 +1,364 @@
 import React, { useState } from 'react';
-import Spinner from './Spinner';
+import { LinkIcon, CheckIcon, RefreshIcon, ShoppingBagIcon } from './Icons';
+
+interface Integration {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  status: 'connected' | 'disconnected' | 'coming_soon';
+  category: 'ecommerce' | 'cms' | 'marketing' | 'crm';
+  connectedAt?: string;
+  productsSync?: number;
+}
 
 const Integrations: React.FC = () => {
-  // Shopify
-  const [shopUrl, setShopUrl] = useState('');
-  const [shopifyToken, setShopifyToken] = useState('');
-  const [shopifyStatus, setShopifyStatus] = useState<string | null>(null);
-  const [shopifyLoading, setShopifyLoading] = useState(false);
+  const [integrations, setIntegrations] = useState<Integration[]>([
+    {
+      id: 'shopify',
+      name: 'Shopify',
+      description: 'Synka produkter och publicera beskrivningar direkt till din Shopify-butik',
+      icon: '🛍️',
+      status: 'connected',
+      category: 'ecommerce',
+      connectedAt: '2024-11-15',
+      productsSync: 247,
+    },
+    {
+      id: 'woocommerce',
+      name: 'WooCommerce',
+      description: 'Integrera med WordPress och WooCommerce för sömlös produkthantering',
+      icon: '🟣',
+      status: 'disconnected',
+      category: 'ecommerce',
+    },
+    {
+      id: 'magento',
+      name: 'Adobe Commerce (Magento)',
+      description: 'Enterprise-grade integration med Adobe Commerce',
+      icon: '🔶',
+      status: 'disconnected',
+      category: 'ecommerce',
+    },
+    {
+      id: 'wix',
+      name: 'Wix',
+      description: 'Koppla ihop med din Wix-webbutik',
+      icon: '⬛',
+      status: 'coming_soon',
+      category: 'ecommerce',
+    },
+    {
+      id: 'squarespace',
+      name: 'Squarespace',
+      description: 'Synka med Squarespace Commerce',
+      icon: '⬜',
+      status: 'coming_soon',
+      category: 'ecommerce',
+    },
+    {
+      id: 'contentful',
+      name: 'Contentful',
+      description: 'Publicera genererat innehåll till Contentful CMS',
+      icon: '📝',
+      status: 'disconnected',
+      category: 'cms',
+    },
+    {
+      id: 'sanity',
+      name: 'Sanity',
+      description: 'Integrera med Sanity för headless CMS-arbetsflöden',
+      icon: '🔴',
+      status: 'coming_soon',
+      category: 'cms',
+    },
+    {
+      id: 'mailchimp',
+      name: 'Mailchimp',
+      description: 'Exportera produktbeskrivningar till e-postkampanjer',
+      icon: '🐵',
+      status: 'disconnected',
+      category: 'marketing',
+    },
+    {
+      id: 'klaviyo',
+      name: 'Klaviyo',
+      description: 'Synka med Klaviyo för e-handels-marknadsföring',
+      icon: '📧',
+      status: 'coming_soon',
+      category: 'marketing',
+    },
+    {
+      id: 'hubspot',
+      name: 'HubSpot',
+      description: 'Integrera med HubSpot CRM och Marketing Hub',
+      icon: '🟠',
+      status: 'coming_soon',
+      category: 'crm',
+    },
+  ]);
 
-  // WooCommerce
-  const [storeUrl, setStoreUrl] = useState('');
-  const [consumerKey, setConsumerKey] = useState('');
-  const [consumerSecret, setConsumerSecret] = useState('');
-  const [wooStatus, setWooStatus] = useState<string | null>(null);
-  const [wooLoading, setWooLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [showConnectModal, setShowConnectModal] = useState<string | null>(null);
 
-  // Magento
-  const [magentoUrl, setMagentoUrl] = useState('');
-  const [magentoToken, setMagentoToken] = useState('');
-  const [magentoStatus, setMagentoStatus] = useState<string | null>(null);
-  const [magentoLoading, setMagentoLoading] = useState(false);
+  const categories = [
+    { id: 'all', name: 'Alla' },
+    { id: 'ecommerce', name: 'E-handel' },
+    { id: 'cms', name: 'CMS' },
+    { id: 'marketing', name: 'Marknadsföring' },
+    { id: 'crm', name: 'CRM' },
+  ];
 
-  // Wix
-  const [wixUrl, setWixUrl] = useState('');
-  const [wixToken, setWixToken] = useState('');
-  const [wixStatus, setWixStatus] = useState<string | null>(null);
-  const [wixLoading, setWixLoading] = useState(false);
+  const filteredIntegrations = activeCategory === 'all' 
+    ? integrations 
+    : integrations.filter(i => i.category === activeCategory);
 
-  // Squarespace
-  const [squarespaceUrl, setSquarespaceUrl] = useState('');
-  const [squarespaceToken, setSquarespaceToken] = useState('');
-  const [squarespaceStatus, setSquarespaceStatus] = useState<string | null>(null);
-  const [squarespaceLoading, setSquarespaceLoading] = useState(false);
+  const connectedCount = integrations.filter(i => i.status === 'connected').length;
 
-  const connectShopify = async () => {
-    setShopifyLoading(true);
-    setShopifyStatus(null);
-    try {
-      const mockRequest = new Request('http://localhost/functions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'connectShopify', payload: { shopUrl, accessToken: shopifyToken } })
-      });
-      // @ts-ignore
-      const handler = (await import('../functions/generate')).default;
-      const response = await handler(mockRequest);
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'Kunde inte ansluta till Shopify');
-      setShopifyStatus('Ansluten!');
-    } catch (e: any) {
-      setShopifyStatus(e.message);
-    } finally {
-      setShopifyLoading(false);
-    }
+  const handleConnect = (integrationId: string) => {
+    // In real app, this would open OAuth flow
+    setIntegrations(integrations.map(i => 
+      i.id === integrationId 
+        ? { ...i, status: 'connected' as const, connectedAt: new Date().toISOString().split('T')[0] }
+        : i
+    ));
+    setShowConnectModal(null);
   };
 
-  const connectWooCommerce = async () => {
-    setWooLoading(true);
-    setWooStatus(null);
-    try {
-      const mockRequest = new Request('http://localhost/functions/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'connectWooCommerce', payload: { storeUrl, consumerKey, consumerSecret } })
-      });
-      // @ts-ignore
-      const handler = (await import('../functions/generate')).default;
-      const response = await handler(mockRequest);
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'Kunde inte ansluta till WooCommerce');
-      setWooStatus('Ansluten!');
-    } catch (e: any) {
-      setWooStatus(e.message);
-    } finally {
-      setWooLoading(false);
-    }
-  };
-
-  const connectMagento = async () => {
-    setMagentoLoading(true);
-    setMagentoStatus(null);
-    try {
-      // Mock: simulera lyckad anslutning
-      await new Promise(r => setTimeout(r, 700));
-      setMagentoStatus('Ansluten!');
-    } catch (e: any) {
-      setMagentoStatus(e.message);
-    } finally {
-      setMagentoLoading(false);
-    }
-  };
-
-  const connectWix = async () => {
-    setWixLoading(true);
-    setWixStatus(null);
-    try {
-      await new Promise(r => setTimeout(r, 700));
-      setWixStatus('Ansluten!');
-    } catch (e: any) {
-      setWixStatus(e.message);
-    } finally {
-      setWixLoading(false);
-    }
-  };
-
-  const connectSquarespace = async () => {
-    setSquarespaceLoading(true);
-    setSquarespaceStatus(null);
-    try {
-      await new Promise(r => setTimeout(r, 700));
-      setSquarespaceStatus('Ansluten!');
-    } catch (e: any) {
-      setSquarespaceStatus(e.message);
-    } finally {
-      setSquarespaceLoading(false);
-    }
+  const handleDisconnect = (integrationId: string) => {
+    setIntegrations(integrations.map(i => 
+      i.id === integrationId 
+        ? { ...i, status: 'disconnected' as const, connectedAt: undefined, productsSync: undefined }
+        : i
+    ));
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h2 className="text-xl font-bold mb-4">Integrationer</h2>
-      <div className="mb-8">
-        <h3 className="font-semibold mb-2">Shopify</h3>
-        <input type="text" placeholder="Shopify URL" value={shopUrl} onChange={e => setShopUrl(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="Admin API Token" value={shopifyToken} onChange={e => setShopifyToken(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <button onClick={connectShopify} disabled={shopifyLoading} className="bg-green-600 text-white px-4 py-2 rounded">
-          {shopifyLoading ? <Spinner /> : 'Koppla Shopify'}
-        </button>
-        {shopifyStatus && <div className="mt-2 text-sm text-green-400">{shopifyStatus}</div>}
-      </div>
+    <div className="max-w-6xl mx-auto space-y-8">
+      {/* Header */}
       <div>
-        <h3 className="font-semibold mb-2">WooCommerce</h3>
-        <input type="text" placeholder="WooCommerce URL" value={storeUrl} onChange={e => setStoreUrl(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="Consumer Key" value={consumerKey} onChange={e => setConsumerKey(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="Consumer Secret" value={consumerSecret} onChange={e => setConsumerSecret(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <button onClick={connectWooCommerce} disabled={wooLoading} className="bg-blue-600 text-white px-4 py-2 rounded">
-          {wooLoading ? <Spinner /> : 'Koppla WooCommerce'}
-        </button>
-        {wooStatus && <div className="mt-2 text-sm text-blue-400">{wooStatus}</div>}
+        <h2 className="text-2xl font-bold text-white">Integrationer</h2>
+        <p className="text-gray-400 mt-1">Koppla samman UltragenerationPro med dina favoritverktyg</p>
       </div>
 
-      {/* Magento */}
-      <div className="mb-8">
-        <h3 className="font-semibold mb-2">Magento</h3>
-        <input type="text" placeholder="Magento URL" value={magentoUrl} onChange={e => setMagentoUrl(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="API Token" value={magentoToken} onChange={e => setMagentoToken(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <button onClick={connectMagento} disabled={magentoLoading} className="bg-orange-600 text-white px-4 py-2 rounded">
-          {magentoLoading ? <Spinner /> : 'Koppla Magento'}
-        </button>
-        {magentoStatus && <div className="mt-2 text-sm text-orange-400">{magentoStatus}</div>}
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-500/20 rounded-lg">
+              <LinkIcon className="w-6 h-6 text-green-400" />
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Aktiva integrationer</p>
+              <p className="text-2xl font-bold text-white">{connectedCount}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/20 rounded-lg">
+              <ShoppingBagIcon className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Synkade produkter</p>
+              <p className="text-2xl font-bold text-white">247</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-yellow-500/20 rounded-lg">
+              <RefreshIcon className="w-6 h-6 text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Senaste synk</p>
+              <p className="text-2xl font-bold text-white">5 min sedan</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Wix */}
-      <div className="mb-8">
-        <h3 className="font-semibold mb-2">Wix</h3>
-        <input type="text" placeholder="Wix URL" value={wixUrl} onChange={e => setWixUrl(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="API Token" value={wixToken} onChange={e => setWixToken(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <button onClick={connectWix} disabled={wixLoading} className="bg-purple-600 text-white px-4 py-2 rounded">
-          {wixLoading ? <Spinner /> : 'Koppla Wix'}
-        </button>
-        {wixStatus && <div className="mt-2 text-sm text-purple-400">{wixStatus}</div>}
+      {/* Category Filter */}
+      <div className="flex gap-2 flex-wrap">
+        {categories.map((category) => (
+          <button
+            key={category.id}
+            onClick={() => setActiveCategory(category.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeCategory === category.id
+                ? 'bg-yellow-500 text-gray-900'
+                : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
+          >
+            {category.name}
+          </button>
+        ))}
       </div>
 
-      {/* Squarespace */}
-      <div className="mb-8">
-        <h3 className="font-semibold mb-2">Squarespace</h3>
-        <input type="text" placeholder="Squarespace URL" value={squarespaceUrl} onChange={e => setSquarespaceUrl(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <input type="text" placeholder="API Token" value={squarespaceToken} onChange={e => setSquarespaceToken(e.target.value)} className="mb-2 w-full px-2 py-1 rounded border" />
-        <button onClick={connectSquarespace} disabled={squarespaceLoading} className="bg-gray-600 text-white px-4 py-2 rounded">
-          {squarespaceLoading ? <Spinner /> : 'Koppla Squarespace'}
-        </button>
-        {squarespaceStatus && <div className="mt-2 text-sm text-gray-400">{squarespaceStatus}</div>}
+      {/* Integrations Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {filteredIntegrations.map((integration) => (
+          <div
+            key={integration.id}
+            className={`bg-gray-800/50 border rounded-xl p-6 ${
+              integration.status === 'connected'
+                ? 'border-green-500/30'
+                : integration.status === 'coming_soon'
+                ? 'border-gray-700 opacity-60'
+                : 'border-gray-700'
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">{integration.icon}</div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white">{integration.name}</h3>
+                  {integration.status === 'connected' && (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+                      <CheckIcon className="w-3 h-3" />
+                      Ansluten
+                    </span>
+                  )}
+                  {integration.status === 'coming_soon' && (
+                    <span className="px-2 py-0.5 bg-gray-700 text-gray-400 rounded-full text-xs font-medium">
+                      Kommer snart
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-400 text-sm mt-1">{integration.description}</p>
+                
+                {integration.status === 'connected' && (
+                  <div className="mt-4 p-3 bg-gray-900/50 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Ansluten sedan</span>
+                      <span className="text-white">{integration.connectedAt}</span>
+                    </div>
+                    {integration.productsSync !== undefined && (
+                      <div className="flex justify-between text-sm mt-2">
+                        <span className="text-gray-400">Synkade produkter</span>
+                        <span className="text-white">{integration.productsSync}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="mt-4 flex gap-2">
+                  {integration.status === 'connected' ? (
+                    <>
+                      <button className="flex items-center gap-2 px-3 py-2 bg-gray-700 text-white rounded-lg text-sm hover:bg-gray-600 transition-colors">
+                        <RefreshIcon className="w-4 h-4" />
+                        Synka nu
+                      </button>
+                      <button
+                        onClick={() => handleDisconnect(integration.id)}
+                        className="px-3 py-2 text-red-400 hover:text-red-300 text-sm transition-colors"
+                      >
+                        Koppla från
+                      </button>
+                    </>
+                  ) : integration.status === 'disconnected' ? (
+                    <button
+                      onClick={() => setShowConnectModal(integration.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg text-sm font-semibold hover:bg-yellow-400 transition-colors"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      Anslut
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="px-4 py-2 bg-gray-700 text-gray-500 rounded-lg text-sm cursor-not-allowed"
+                    >
+                      Meddela mig
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {/* Webhook Section */}
+      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Webhooks</h3>
+        <p className="text-gray-400 text-sm mb-4">
+          Konfigurera webhooks för att ta emot notifikationer när innehåll genereras.
+        </p>
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <input
+              type="url"
+              placeholder="https://din-server.com/webhook"
+              className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+            />
+            <button className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-semibold hover:bg-yellow-400 transition-colors">
+              Lägg till
+            </button>
+          </div>
+          <div className="text-xs text-gray-500">
+            Webhooks skickar POST-förfrågningar med genererat innehåll i JSON-format.
+          </div>
+        </div>
+      </div>
+
+      {/* Export Options */}
+      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Exportformat</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { format: 'CSV', desc: 'Kommaseparerad', icon: '📊' },
+            { format: 'JSON', desc: 'API-vänlig', icon: '{ }' },
+            { format: 'Excel', desc: '.xlsx format', icon: '📗' },
+            { format: 'XML', desc: 'Feed-format', icon: '📄' },
+          ].map((exp) => (
+            <button
+              key={exp.format}
+              className="p-4 bg-gray-700 border border-gray-600 rounded-xl text-left hover:border-yellow-500/50 transition-colors"
+            >
+              <div className="text-2xl mb-2">{exp.icon}</div>
+              <div className="font-semibold text-white">{exp.format}</div>
+              <div className="text-xs text-gray-400">{exp.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Connect Modal */}
+      {showConnectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-white mb-4">
+              Anslut {integrations.find(i => i.id === showConnectModal)?.name}
+            </h3>
+            <div className="space-y-4">
+              <p className="text-gray-400 text-sm">
+                Du kommer att omdirigeras för att autentisera med{' '}
+                {integrations.find(i => i.id === showConnectModal)?.name}.
+              </p>
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-sm text-blue-200">
+                ℹ️ Vi lagrar aldrig dina inloggningsuppgifter. Anslutningen sker via OAuth 2.0.
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowConnectModal(null)}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={() => handleConnect(showConnectModal)}
+                  className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-semibold hover:bg-yellow-400 transition-colors"
+                >
+                  Fortsätt till {integrations.find(i => i.id === showConnectModal)?.name}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
