@@ -1,11 +1,15 @@
-// AI Image Generation Service
-// Supports: OpenAI DALL-E 3, Stable Diffusion, Replicate, Flux, Ideogram
+// Advanced AI Image Generation Service - Market's Best Image Generator
+// Supports: OpenAI DALL-E 3, Flux, Ideogram 2.0, Stable Diffusion XL, Replicate
+// Features: Image editing, upscaling, background removal, face restore, style transfer
 
 export interface ImageGenerationResult {
   success: boolean;
   imageUrl?: string;
   error?: string;
   revisedPrompt?: string;
+  generationTime?: number;
+  provider?: string;
+  seed?: number;
 }
 
 export interface ImageGenerationOptions {
@@ -14,6 +18,17 @@ export interface ImageGenerationOptions {
   aspectRatio?: string;
   quality?: 'standard' | 'hd';
   provider?: 'openai' | 'stability' | 'replicate' | 'flux' | 'ideogram';
+  negativePrompt?: string;
+  seed?: number;
+  guidanceScale?: number;
+  steps?: number;
+}
+
+export interface ImageEditOptions {
+  imageUrl: string;
+  prompt: string;
+  maskUrl?: string;
+  operation: 'inpaint' | 'outpaint' | 'upscale' | 'variation' | 'style-transfer' | 'background-remove' | 'face-restore';
 }
 
 // Aspect ratio to size mapping for DALL-E
@@ -21,24 +36,52 @@ const DALLE_SIZES: Record<string, string> = {
   '1:1': '1024x1024',
   '16:9': '1792x1024',
   '9:16': '1024x1792',
-  '4:5': '1024x1024', // DALL-E doesn't support 4:5, use closest
-  '2:3': '1024x1792', // Use portrait
+  '4:5': '1024x1024',
+  '2:3': '1024x1792',
+  '3:2': '1792x1024',
+  '21:9': '1792x1024',
 };
 
-// Style enhancers for better results
+// Platform-specific aspect ratio mappings
+const ASPECT_RATIO_MAP: Record<string, { width: number; height: number }> = {
+  '1:1': { width: 1024, height: 1024 },
+  '9:16': { width: 576, height: 1024 },
+  '16:9': { width: 1024, height: 576 },
+  '4:5': { width: 819, height: 1024 },
+  '2:3': { width: 683, height: 1024 },
+  '3:2': { width: 1024, height: 683 },
+  '21:9': { width: 1024, height: 439 },
+};
+
+// Professional style enhancers
 const STYLE_ENHANCERS: Record<string, string> = {
-  'instagram': 'professional Instagram photography style, high quality, aesthetic, trending on Instagram',
-  'story': 'vertical mobile format, Instagram story style, eye-catching, vibrant',
-  'youtube': 'YouTube thumbnail style, bold, eye-catching, high contrast, professional',
-  'tiktok': 'TikTok viral content style, trendy, Gen-Z aesthetic, engaging',
-  'product': 'professional product photography, studio lighting, clean background, commercial quality',
-  'lifestyle': 'lifestyle photography, natural lighting, authentic, aspirational',
-  'flatlay': 'flat lay photography, top-down view, organized aesthetic, Instagram flat lay style',
-  'portrait': 'professional portrait photography, beautiful lighting, shallow depth of field',
-  'minimalist': 'minimalist style, clean, simple, lots of white space, modern',
-  'vibrant': 'vibrant colors, bold, colorful, eye-catching, saturated',
-  'dark': 'dark moody aesthetic, dramatic lighting, cinematic, atmospheric',
-  'bright': 'bright and airy, light and fresh, soft pastel tones, clean aesthetic',
+  // Social Media Optimized
+  'instagram': 'Instagram-worthy aesthetic, perfectly composed, lifestyle photography, soft natural lighting, clean background, high engagement potential, influencer quality, cohesive feed aesthetic',
+  'story': 'Vertical mobile-optimized composition, bold colors, attention-grabbing, social media story format, dynamic and engaging, trending style, swipe-up worthy',
+  'youtube': 'YouTube thumbnail style, bold vibrant colors, high contrast, attention-grabbing composition, expressive, clear focal point, click-worthy, professional content creator quality',
+  'tiktok': 'TikTok viral aesthetic, Gen-Z trendy, dynamic energy, bold colors, fast-paced vibe, trending content style, scroll-stopping, authentic and relatable',
+  
+  // Product & Commercial
+  'product': 'Premium product photography, professional studio lighting, clean white background, e-commerce ready, high-end commercial quality, sharp details, luxury presentation',
+  
+  // Lifestyle & Content
+  'lifestyle': 'Authentic lifestyle photography, candid moment, warm natural lighting, aspirational but relatable, everyday luxury, curated aesthetic, storytelling composition',
+  'flatlay': 'Professional flat lay composition, perfectly arranged objects, overhead shot, balanced spacing, cohesive color palette, styled props, magazine-worthy arrangement',
+  
+  // Portrait Styles
+  'portrait': 'Professional portrait photography, soft flattering lighting, shallow depth of field, natural skin tones, editorial quality, confident expression, magazine cover worthy',
+  
+  // Artistic Styles
+  'minimalist': 'Minimalist aesthetic, clean lines, negative space, simple elegance, less is more, sophisticated simplicity, Scandinavian design influence',
+  'vibrant': 'Bold vibrant colors, high saturation, energetic composition, joyful atmosphere, color-blocked elements, playful yet professional, festival vibes',
+  'dark': 'Moody dark aesthetic, dramatic lighting, rich shadows, cinematic atmosphere, mysterious ambiance, noir influence, premium feel',
+  'bright': 'Bright airy aesthetic, high-key lighting, soft pastel tones, fresh and clean, optimistic mood, spring/summer vibes, light and breezy',
+  
+  // Cinematic & Artistic
+  'cinematic': 'Cinematic composition, film-like quality, dramatic lighting, movie still aesthetic, 35mm film grain, anamorphic lens flare, director\'s vision',
+  'anime': 'High-quality anime art style, detailed illustration, vibrant colors, dynamic pose, professional manga artist quality, trending on ArtStation',
+  'watercolor': 'Delicate watercolor painting style, soft color bleeding, artistic texture, traditional art medium, gallery-worthy fine art',
+  '3d': 'Professional 3D render, Octane render quality, volumetric lighting, ray tracing, hyperrealistic materials, Blender/Cinema4D aesthetic',
 };
 
 /**
@@ -480,43 +523,280 @@ function getIdeogramStyle(style?: string): string {
  * Enhance prompt using AI for better image results
  */
 export async function enhancePromptWithAI(prompt: string, style: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const styleEnhancer = STYLE_ENHANCERS[style] || '';
   
   if (!apiKey) {
-    // Return original prompt if no API key
-    return prompt;
+    // Fallback to basic enhancement
+    return `${prompt}, ${styleEnhancer}, professional quality, high resolution, masterful composition`;
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Du är en expert på att skriva prompts för AI-bildgenerering. Förbättra följande prompt för att skapa en fantastisk ${style}-bild. Behåll användarens intention men lägg till detaljer om belysning, komposition och stil. Svara ENDAST med den förbättrade prompten, inget annat.
-
-Originalp prompt: "${prompt}"
-
-Förbättrad prompt:`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 200,
-        }
-      }),
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert prompt engineer for AI image generation. Transform user descriptions into detailed, optimized prompts that produce stunning results.
+            
+Rules:
+- Keep the original intent but add professional photography/art terminology
+- Include lighting, composition, and atmosphere details
+- Add relevant style keywords based on: ${style}
+- Make it specific but not overly long (max 200 words)
+- Never include text like "create an image of" - just describe the scene
+- Output ONLY the enhanced prompt, nothing else`
+          },
+          {
+            role: 'user',
+            content: `Enhance this image prompt for ${style} style: "${prompt}"`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 300
+      })
     });
 
     if (!response.ok) {
-      return prompt;
+      return `${prompt}, ${styleEnhancer}, professional quality, high resolution`;
     }
 
     const data = await response.json();
-    const enhancedPrompt = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    
-    return enhancedPrompt || prompt;
+    return data.choices[0].message.content.trim();
   } catch {
-    return prompt;
+    return `${prompt}, ${styleEnhancer}, professional quality, high resolution`;
   }
 }
+
+// ============================================
+// ADVANCED IMAGE EDITING FEATURES
+// ============================================
+
+/**
+ * Remove background from image
+ */
+export async function removeBackground(imageUrl: string): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API key required for background removal' };
+  }
+
+  try {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`
+      },
+      body: JSON.stringify({
+        version: 'fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003',
+        input: { image: imageUrl }
+      })
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Background removal API error' };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Background removal failed'
+    };
+  }
+}
+
+/**
+ * Upscale image (4x) with AI enhancement
+ */
+export async function upscaleImage(imageUrl: string): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API key required for upscaling' };
+  }
+
+  try {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`
+      },
+      body: JSON.stringify({
+        version: '42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b',
+        input: {
+          image: imageUrl,
+          scale: 4,
+          face_enhance: true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Upscale API error' };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Upscaling failed'
+    };
+  }
+}
+
+/**
+ * Face restoration / enhancement
+ */
+export async function restoreFace(imageUrl: string): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API key required for face restoration' };
+  }
+
+  try {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`
+      },
+      body: JSON.stringify({
+        version: '9283608cc6b7be6b65a8e44983db012355fde4132009bf99d976b2f0896856a3',
+        input: {
+          img: imageUrl,
+          version: 'v1.4',
+          scale: 2
+        }
+      })
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Face restoration API error' };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Face restoration failed'
+    };
+  }
+}
+
+/**
+ * Generate image variation based on existing image
+ */
+export async function generateVariation(imageUrl: string, prompt: string): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API key required for variations' };
+  }
+
+  try {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`
+      },
+      body: JSON.stringify({
+        version: '7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc',
+        input: {
+          image: imageUrl,
+          prompt: prompt,
+          strength: 0.7,
+          num_outputs: 1
+        }
+      })
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Variation API error' };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Variation generation failed'
+    };
+  }
+}
+
+/**
+ * Style transfer - apply artistic style to image
+ */
+export async function styleTransfer(contentImage: string, stylePrompt: string): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API key required for style transfer' };
+  }
+
+  try {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`
+      },
+      body: JSON.stringify({
+        version: '7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc',
+        input: {
+          image: contentImage,
+          prompt: stylePrompt,
+          strength: 0.85,
+          guidance_scale: 7.5
+        }
+      })
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Style transfer API error' };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Style transfer failed'
+    };
+  }
+}
+
+// Export all editing utilities
+export const imageUtils = {
+  enhancePromptWithAI,
+  removeBackground,
+  upscaleImage,
+  restoreFace,
+  generateVariation,
+  styleTransfer,
+};
+
+export default {
+  generateImage,
+  ...imageUtils
+};
