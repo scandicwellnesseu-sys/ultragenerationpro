@@ -20,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
     { id: 'dashboard', label: t.navDashboard },
     { id: 'single', label: t.navSingle },
     { id: 'bulk', label: t.navBulk },
+    { id: 'image-generator', label: '🎨 Bilder' },
     { id: 'import', label: 'Import' },
     { id: 'integrations', label: 'Integrationer' },
     { id: 'report', label: 'Rapport' },

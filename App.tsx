@@ -21,9 +21,10 @@ import Integrations from './components/Integrations';
 import ApiDocs from './components/ApiDocs';
 import ActivityLog from './components/ActivityLog';
 import Analytics from './components/Analytics';
+import ImageGenerator from './components/ImageGenerator';
 import './src/index.css';
 
-export type View = 'dashboard' | 'single' | 'bulk' | 'history' | 'influencer' | 'billing' | 'settings' | 'import' | 'report' | 'integrations' | 'admin' | 'api-docs' | 'activity-log' | 'analytics';
+export type View = 'dashboard' | 'single' | 'bulk' | 'history' | 'influencer' | 'billing' | 'settings' | 'import' | 'report' | 'integrations' | 'admin' | 'api-docs' | 'activity-log' | 'analytics' | 'image-generator';
 
 // Map routes to view names
 const routeToView: Record<string, View> = {
@@ -42,6 +43,7 @@ const routeToView: Record<string, View> = {
   '/api-docs': 'api-docs',
   '/activity-log': 'activity-log',
   '/analytics': 'analytics',
+  '/image-generator': 'image-generator',
 };
 
 const viewToRoute: Record<View, string> = {
@@ -59,6 +61,7 @@ const viewToRoute: Record<View, string> = {
   'api-docs': '/api-docs',
   'activity-log': '/activity-log',
   'analytics': '/analytics',
+  'image-generator': '/image-generator',
 };
 
 const MainApp: React.FC = () => {
@@ -96,6 +99,8 @@ const MainApp: React.FC = () => {
         return { title: t.activityLog || 'Aktivitetslogg', description: t.activityLogDesc || 'Historik över händelser.' };
       case 'analytics':
         return { title: t.analytics || 'Analytics', description: t.analyticsDesc || 'Insikter och statistik.' };
+      case 'image-generator':
+        return { title: '🎨 AI Bildskapare', description: 'Skapa professionella bilder för sociala medier med AI.' };
       default:
         return { title: t.titleSingle, description: t.descSingle };
     }
@@ -133,6 +138,7 @@ const MainApp: React.FC = () => {
             <Route path="/api-docs" element={<ApiDocs />} />
             <Route path="/activity-log" element={<ActivityLog />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/image-generator" element={<ImageGenerator />} />
             <Route path="*" element={<Navigate to="/single" replace />} />
           </Routes>
         </div>
