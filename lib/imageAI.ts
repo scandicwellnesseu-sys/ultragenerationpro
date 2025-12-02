@@ -1,5 +1,5 @@
 // AI Image Generation Service
-// Supports: OpenAI DALL-E 3, Stable Diffusion, Replicate
+// Supports: OpenAI DALL-E 3, Stable Diffusion, Replicate, Flux, Ideogram
 
 export interface ImageGenerationResult {
   success: boolean;
@@ -13,7 +13,7 @@ export interface ImageGenerationOptions {
   style?: string;
   aspectRatio?: string;
   quality?: 'standard' | 'hd';
-  provider?: 'openai' | 'stability' | 'replicate';
+  provider?: 'openai' | 'stability' | 'replicate' | 'flux' | 'ideogram';
 }
 
 // Aspect ratio to size mapping for DALL-E
@@ -266,9 +266,214 @@ export async function generateImage(options: ImageGenerationOptions): Promise<Im
       return generateWithStability(options);
     case 'replicate':
       return generateWithReplicate(options);
+    case 'flux':
+      return generateWithFlux(options);
+    case 'ideogram':
+      return generateWithIdeogram(options);
     default:
       return { success: false, error: 'Okänd bildgenereringsprovider' };
   }
+}
+
+/**
+ * Generate image using Flux (via Replicate) - Fastest & trending
+ */
+export async function generateWithFlux(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API-nyckel saknas för Flux. Lägg till VITE_REPLICATE_API_KEY i .env' };
+  }
+
+  try {
+    const styleEnhancer = options.style ? STYLE_ENHANCERS[options.style] || '' : '';
+    const enhancedPrompt = `${options.prompt}. ${styleEnhancer}`.trim();
+    
+    // Map aspect ratio for Flux
+    const aspectRatioMap: Record<string, string> = {
+      '1:1': '1:1',
+      '16:9': '16:9',
+      '9:16': '9:16',
+      '4:5': '4:5',
+      '2:3': '2:3',
+    };
+
+    // Using Flux Schnell (fast) or Flux Pro
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`,
+      },
+      body: JSON.stringify({
+        version: 'f2ab8a5bfe79f02f0789a146cf5e73d2a4ff2684a98c2b303d1e1ff3814271db', // Flux Schnell
+        input: {
+          prompt: enhancedPrompt,
+          aspect_ratio: aspectRatioMap[options.aspectRatio || '1:1'] || '1:1',
+          num_outputs: 1,
+          output_format: 'webp',
+          output_quality: options.quality === 'hd' ? 100 : 80,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return { 
+        success: false, 
+        error: error.detail || 'Kunde inte starta Flux bildgenerering' 
+      };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Ett oväntat fel inträffade med Flux' 
+    };
+  }
+}
+
+/**
+ * Generate image using Flux Pro (highest quality Flux)
+ */
+export async function generateWithFluxPro(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_REPLICATE_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Replicate API-nyckel saknas för Flux Pro. Lägg till VITE_REPLICATE_API_KEY i .env' };
+  }
+
+  try {
+    const styleEnhancer = options.style ? STYLE_ENHANCERS[options.style] || '' : '';
+    const enhancedPrompt = `${options.prompt}. ${styleEnhancer}`.trim();
+
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${apiKey}`,
+      },
+      body: JSON.stringify({
+        version: 'a]057fbc935c96e56e8d9eca507e3bdc1e0c41c94c7c8e0cd8e5a5f5e2e1c5d4a3', // Flux 1.1 Pro
+        input: {
+          prompt: enhancedPrompt,
+          aspect_ratio: options.aspectRatio || '1:1',
+          output_format: 'webp',
+          output_quality: 100,
+          safety_tolerance: 2,
+          prompt_upsampling: true,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return { 
+        success: false, 
+        error: error.detail || 'Kunde inte starta Flux Pro bildgenerering' 
+      };
+    }
+
+    const prediction = await response.json();
+    const result = await pollReplicatePrediction(prediction.id, apiKey);
+    return result;
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Ett oväntat fel inträffade med Flux Pro' 
+    };
+  }
+}
+
+/**
+ * Generate image using Ideogram - Best for text in images
+ */
+export async function generateWithIdeogram(options: ImageGenerationOptions): Promise<ImageGenerationResult> {
+  const apiKey = import.meta.env.VITE_IDEOGRAM_API_KEY;
+  
+  if (!apiKey) {
+    return { success: false, error: 'Ideogram API-nyckel saknas. Lägg till VITE_IDEOGRAM_API_KEY i .env' };
+  }
+
+  try {
+    const styleEnhancer = options.style ? STYLE_ENHANCERS[options.style] || '' : '';
+    const enhancedPrompt = `${options.prompt}. ${styleEnhancer}`.trim();
+    
+    // Map aspect ratio for Ideogram
+    const aspectRatioMap: Record<string, string> = {
+      '1:1': 'ASPECT_1_1',
+      '16:9': 'ASPECT_16_9',
+      '9:16': 'ASPECT_9_16',
+      '4:5': 'ASPECT_4_5',
+      '2:3': 'ASPECT_2_3',
+    };
+
+    const response = await fetch('https://api.ideogram.ai/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Api-Key': apiKey,
+      },
+      body: JSON.stringify({
+        image_request: {
+          prompt: enhancedPrompt,
+          aspect_ratio: aspectRatioMap[options.aspectRatio || '1:1'] || 'ASPECT_1_1',
+          model: 'V_2', // Ideogram 2.0
+          magic_prompt_option: 'AUTO', // Let Ideogram enhance the prompt
+          style_type: getIdeogramStyle(options.style),
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return { 
+        success: false, 
+        error: error.message || 'Kunde inte generera bild med Ideogram' 
+      };
+    }
+
+    const data = await response.json();
+    
+    if (data.data && data.data.length > 0) {
+      return {
+        success: true,
+        imageUrl: data.data[0].url,
+        revisedPrompt: data.data[0].prompt,
+      };
+    }
+    
+    return { success: false, error: 'Ingen bild returnerades från Ideogram' };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Ett oväntat fel inträffade med Ideogram' 
+    };
+  }
+}
+
+/**
+ * Map our styles to Ideogram style types
+ */
+function getIdeogramStyle(style?: string): string {
+  const styleMap: Record<string, string> = {
+    'instagram': 'REALISTIC',
+    'story': 'REALISTIC',
+    'youtube': 'REALISTIC',
+    'tiktok': 'REALISTIC',
+    'product': 'REALISTIC',
+    'lifestyle': 'REALISTIC',
+    'flatlay': 'REALISTIC',
+    'portrait': 'REALISTIC',
+    'minimalist': 'DESIGN',
+    'vibrant': 'REALISTIC',
+    'dark': 'REALISTIC',
+    'bright': 'REALISTIC',
+  };
+  return styleMap[style || ''] || 'AUTO';
 }
 
 /**

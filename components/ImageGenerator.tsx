@@ -57,7 +57,7 @@ export const ImageGenerator: React.FC = () => {
   const [enhancePromptEnabled, setEnhancePromptEnabled] = useState(true);
   const [numberOfImages, setNumberOfImages] = useState(1);
   const [activeTab, setActiveTab] = useState<'generate' | 'gallery' | 'templates'>('generate');
-  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'stability' | 'replicate'>('openai');
+  const [selectedProvider, setSelectedProvider] = useState<'openai' | 'stability' | 'replicate' | 'flux' | 'ideogram'>('openai');
   const [imageQuality, setImageQuality] = useState<'standard' | 'hd'>('standard');
   const [generationsUsed, setGenerationsUsed] = useState(0);
   const generationsLimit = 100;
@@ -307,7 +307,7 @@ export const ImageGenerator: React.FC = () => {
               <label className="block text-sm font-medium text-slate-300 mb-3">
                 AI-motor
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 <button
                   onClick={() => setSelectedProvider('openai')}
                   className={`p-3 rounded-lg text-center transition-all ${
@@ -319,6 +319,30 @@ export const ImageGenerator: React.FC = () => {
                   <span className="text-xl block mb-1">🎨</span>
                   <span className="text-xs font-medium">DALL-E 3</span>
                   <span className="text-xs block opacity-60">OpenAI</span>
+                </button>
+                <button
+                  onClick={() => setSelectedProvider('flux')}
+                  className={`p-3 rounded-lg text-center transition-all ${
+                    selectedProvider === 'flux'
+                      ? 'bg-purple-600 text-white ring-2 ring-purple-400'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  <span className="text-xl block mb-1">⚡</span>
+                  <span className="text-xs font-medium">Flux</span>
+                  <span className="text-xs block opacity-60">Snabbast</span>
+                </button>
+                <button
+                  onClick={() => setSelectedProvider('ideogram')}
+                  className={`p-3 rounded-lg text-center transition-all ${
+                    selectedProvider === 'ideogram'
+                      ? 'bg-pink-600 text-white ring-2 ring-pink-400'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  <span className="text-xl block mb-1">✍️</span>
+                  <span className="text-xs font-medium">Ideogram</span>
+                  <span className="text-xs block opacity-60">Bäst text</span>
                 </button>
                 <button
                   onClick={() => setSelectedProvider('stability')}
@@ -342,7 +366,7 @@ export const ImageGenerator: React.FC = () => {
                 >
                   <span className="text-xl block mb-1">🔥</span>
                   <span className="text-xs font-medium">Replicate</span>
-                  <span className="text-xs block opacity-60">Multi-model</span>
+                  <span className="text-xs block opacity-60">100+ modeller</span>
                 </button>
               </div>
               {selectedProvider === 'openai' && (
@@ -369,6 +393,14 @@ export const ImageGenerator: React.FC = () => {
                   </button>
                 </div>
               )}
+              {/* Provider info */}
+              <div className="mt-3 p-3 bg-slate-700/50 rounded-lg text-xs text-slate-400">
+                {selectedProvider === 'openai' && '🎨 DALL-E 3 - Bäst på realistiska bilder och följer prompts exakt'}
+                {selectedProvider === 'flux' && '⚡ Flux - Snabbaste motorn, perfekt för snabb iteration'}
+                {selectedProvider === 'ideogram' && '✍️ Ideogram 2.0 - Bäst på att rendera text i bilder'}
+                {selectedProvider === 'stability' && '🖼️ Stable Diffusion XL - Prisvärd och bra för konstnärliga stilar'}
+                {selectedProvider === 'replicate' && '🔥 Replicate - Tillgång till 100+ AI-modeller'}
+              </div>
             </div>
 
             {/* Generate Button */}
